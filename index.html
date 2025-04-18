@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Friendly font -->
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Global friendly styling */
+    body {
+      margin: 0;
+      /* vivid sky‑to‑grass gradient */
+      background: linear-gradient(to bottom, #89CFF0 0%, #C1FBA4 100%);
+      font-family: 'Fredoka One', cursive;
+      color: #333;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent; /* remove blue highlight on mobile */
+    }
+
+    /* Main game container */
+    #app {
+      position: absolute;
+      top: 2vh;
+      left: 2vw;
+      width: 96vw;
+      height: 96vh;
+      background: #fff;
+      border-radius: 24px;
+      border: 8px solid #89CFF0; /* pastel blue */
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+      transition: border-color 0.3s ease-out;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Border‑flash helpers (added/removed via JS) */
+    .flash-green-border { border-color: #B5E48C !important; }
+    .flash-orange-border { border-color: #FFB347 !important; }
+
+    /* Question container – heavier stroke so it pops */
+    .question-box {
+      transition: border-color 0.3s ease‑out;
+    }
+
+    /* Button styling */
+    .pixel-btn {
+      background: #ffeb99;
+      color: #333;
+      border: none;
+      border-radius: 14px;
+      padding: 14px 28px;
+      font-size: 1.1rem;
+    }
+    .pixel-btn:hover { background: #ffd54f; }
+
+    /* Input styling */
+    .pixel-input {
+      background: #fff;
+      color: #333;
+      border: 4px solid #89CFF0; /* heavier stroke */
+      border-radius: 16px;
+      padding: 12px 18px;
+      width: 80%;
+      font-size: 2rem;
+      text-align: center;
+      transition: border-color 0.3s ease-out;
+
+      outline: none;                 /* strip browser outline */
+      box-shadow: none;              /* strip Tailwind focus ring if any */
+    }
+    @media (min-width: 640px) {
+      .pixel-input { font-size: 2.5rem; width: 60%; }
+    }
+
+    /* Animations */
+    @keyframes shake { 0%,100%{transform:translateX(0);}20%,80%{transform:translateX(-6px);}40%,60%{transform:translateX(6px);} }
+    .animate-shake { animation: shake 0.5s; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+    @keyframes scaleUp { from { transform: scale(0.5); } to { transform: scale(1); } }
+    .scale-up { animation: scaleUp 0.5s ease-out forwards; }
+
+    /* One‑time bounce */
+    @keyframes bounceOnce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
+    .bounce-once { animation: bounceOnce 0.6s ease-out; }
+
+    /* Keypress pop */
+    @keyframes popFlash { 0%{background-color:#fff;} 50%{background-color:#BDE5FF;} 100%{background-color:#fff;} }
+    .keypress-pop { animation: popFlash 0.25s ease-out; }
+  </style>
+  <title>Simple Sums</title>
+</head>
+<body>
+  <!-- Mount point for React -->
+  <div id="app"></div>
+
+  <!-- React & Confetti -->
+  <script src="https://unpkg.com/react@17/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function App() {
+      /* util */
+      const rand = () => Math.ceil(Math.random() * 10);
+
+      /* refs */
+      const questionBoxRef = useRef(null);
+      const inputRef       = useRef(null);
+
+      /* state */
+      const initial = {
+        num1: rand(),
+        num2: rand(),
+        response: '',
+        score: 0,
+        incorrect: false,
+        flashColor: null // 'green' | 'orange'
+      };
+      const [state, setState] = useState(initial);
+      const { num1, num2, response, score, incorrect, flashColor } = state;
+
+      const debounceTimer = useRef(null);
+
+      /* handle input typing */
+      const handleChange = (e) => {
+        // pop flash on each keypress
+        const el = e.target;
+        el.classList.remove('keypress-pop'); // reset in case previous anim not finished
+        // forcing reflow to restart animation
+        void el.offsetWidth;
+        el.classList.add('keypress-pop');
+
+        setState(prev => ({ ...prev, response: e.target.value.replace(/\D/g, '') }));
+      };
+
+      /* evaluate answer (debounced 500 ms) */
+      useEffect(() => {
+        const sum = num1 + num2;
+        clearTimeout(debounceTimer.current);
+        if (response.length === sum.toString().length) {
+          debounceTimer.current = setTimeout(() => {
+            setState(prev => {
+              const ans = Number(prev.response);
+              if (ans === sum) {
+                return {
+                  num1: rand(),
+                  num2: rand(),
+                  response: '',
+                  score: prev.score + 1,
+                  incorrect: false,
+                  flashColor: 'green'
+                };
+              }
+              return {
+                ...prev,
+                response: '',
+                score: prev.score - 1,
+                incorrect: true,
+                flashColor: 'orange'
+              };
+            });
+          }, 500);
+        }
+        return () => clearTimeout(debounceTimer.current);
+      }, [response, num1, num2]);
+
+      /* shake on wrong */
+      useEffect(() => {
+        if (incorrect && inputRef.current) {
+          inputRef.current.classList.add('animate-shake');
+          setTimeout(() => inputRef.current.classList.remove('animate-shake'), 500);
+          setState(prev => ({ ...prev, incorrect: false }));
+        }
+      }, [incorrect]);
+
+      /* border flash & bounce on correct / wrong */
+      useEffect(() => {
+        if (!flashColor) return;
+        const appEl = document.getElementById('app');
+        const inputEl = inputRef.current;
+        const boxEl  = questionBoxRef.current;
+        const className = flashColor === 'green' ? 'flash-green-border' : 'flash-orange-border';
+
+        [appEl, inputEl, boxEl].forEach(el => el && el.classList.add(className));
+        if (flashColor === 'green') {
+          [inputEl, boxEl].forEach(el => el && el.classList.add('bounce-once'));
+          setTimeout(() => {
+            [inputEl, boxEl].forEach(el => el && el.classList.remove('bounce-once'));
+          }, 700);
+        }
+
+        const id = setTimeout(() => {
+          [appEl, inputEl, boxEl].forEach(el => el && el.classList.remove(className));
+          setState(prev => ({ ...prev, flashColor: null }));
+        }, 3000);
+        return () => clearTimeout(id);
+      }, [flashColor]);
+
+      /* confetti on big win */
+      useEffect(() => {
+        if (score >= 10) confetti({ particleCount: 120, spread: 70 });
+      }, [score]);
+
+      const reset = () => setState(initial);
+
+      /* loss / win screens */
+      if (score <= -10) return (
+        <div className="absolute inset-0 bg-white flex flex-col items-center justify-center">
+          <div className="scale-up fade-in text-3xl mb-4">Oh no! Try again!</div>
+          <button onClick={reset} className="pixel-btn">RESET</button>
+        </div>
+      );
+
+      if (score >= 10) return (
+        <div className="absolute inset-0 bg-white flex flex-col items-center justify-center">
+          <div className="scale-up fade-in text-3xl mb-4">Yay! You did it!</div>
+          <button onClick={reset} className="pixel-btn">PLAY AGAIN</button>
+        </div>
+      );
+
+      /* progress bar */
+      const mid = 10;
+      const balloonCount = Math.min(Math.max(-score,0), mid);
+      const starCount    = Math.min(Math.max(score,0),  mid);
+
+      return (
+        <div className="relative h-full flex flex-col items-center justify-center gap-8 px-4 py-6">
+          {/* title */}
+          <div className="text-5xl sm:text-6xl fade-in">Simple Sums</div>
+
+          {/* question box */}
+          <div
+            ref={questionBoxRef}
+            key={`${num1}-${num2}`}
+            className="question-box fade-in">
+            <h1 className="question-text text-4xl sm:text-5xl md:text-6xl">
+              What is {num1} + {num2}?
+            </h1>
+          </div>
+
+          {/* progress bar icons */}
+          <div className="flex mb-2">
+            {Array.from({ length: 20 }).map((_, i) => {
+              const isBalloon = i < mid;
+              const icon = isBalloon ? '🎈' : '⭐';
+              const base = 0.1;
+              let opacity = base;
+              if (isBalloon) {
+                const j = (mid - 1) - i;
+                if (j < balloonCount) opacity = base + (j + 1) * 0.1;
+              } else {
+                const j = i - mid;
+                if (j < starCount) opacity = base + (j + 1) * 0.1;
+              }
+              return (
+                <span key={i} className="mx-1 text-2xl sm:text-3xl" style={{ opacity }}>
+                  {icon}
+                </span>
+              );
+            })}
+          </div>
+
+          {/* answer input */}
+          <input
+            ref={inputRef}
+            className="pixel-input"
+            type="text"
+            inputMode="numeric"
+            maxLength={(num1 + num2).toString().length}
+            value={response}
+            onChange={handleChange}
+          />
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('app'));
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

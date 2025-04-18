@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <!-- Friendly font -->
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+
   <style>
     /* Global friendly styling */
     body {
@@ -19,33 +22,45 @@
       -webkit-tap-highlight-color: transparent; /* remove blue highlight on mobile */
     }
 
-    /* Main game container */
+    /* Main game container — auto‑fits any screen / rotation */
     #app {
-      position: absolute;
-      top: 2vh;
-      left: 2vw;
-      width: 96vw;
-      height: 96vh;
+      position: fixed;
+      inset: 2vmin;                    /* uniform margin on all sides */
+      display: flex;
+      flex-direction: column;
+
+      /* dynamic viewport height for modern browsers */
+      height: 96dvh;
+
+      /* fallback for browsers without dvh */
+      height: calc(var(--vh, 1vh) * 96);
+
+      width: auto;
+      max-width: 1024px;               /* optional cap on ultrawide desktop */
+
       background: #fff;
       border-radius: 24px;
-      border: 8px solid #89CFF0; /* pastel blue */
+      border: 8px solid #89CFF0;       /* pastel blue */
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       overflow: hidden;
       transition: border-color 0.3s ease-out;
-      display: flex;
-      flex-direction: column;
     }
 
     /* Border‑flash helpers (added/removed via JS) */
     .flash-green-border { border-color: #B5E48C !important; }
     .flash-orange-border { border-color: #FFB347 !important; }
 
-    /* Question container – heavier stroke so it pops */
+    /* Question container — invisible stroke by default */
     .question-box {
-      transition: border-color 0.3s ease‑out;
+      border: 4px solid transparent;   /* becomes green/orange during flash */
+      border-radius: 20px;
+      padding: 16px 24px;
+      background: rgba(255,255,255,0.9);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      transition: border-color 0.3s ease-out;
     }
 
-    /* Button styling */
+    /* Pixel‑style button */
     .pixel-btn {
       background: #ffeb99;
       color: #333;
@@ -60,39 +75,47 @@
     .pixel-input {
       background: #fff;
       color: #333;
-      border: 4px solid #89CFF0; /* heavier stroke */
+      border: 4px solid #89CFF0;       /* single pastel‑blue stroke */
       border-radius: 16px;
       padding: 12px 18px;
-      width: 80%;
+      width: min(80%, 320px);          /* shrinks on narrow phones */
       font-size: 2rem;
       text-align: center;
       transition: border-color 0.3s ease-out;
-
-      outline: none;                 /* strip browser outline */
-      box-shadow: none;              /* strip Tailwind focus ring if any */
+      outline: none;                   /* no extra browser outline */
+      box-shadow: none;                /* disable Tailwind focus ring */
     }
+    .pixel-input:focus { outline: none; box-shadow: none; }
+
     @media (min-width: 640px) {
       .pixel-input { font-size: 2.5rem; width: 60%; }
     }
 
     /* Animations */
-    @keyframes shake { 0%,100%{transform:translateX(0);}20%,80%{transform:translateX(-6px);}40%,60%{transform:translateX(6px);} }
-    .animate-shake { animation: shake 0.5s; }
+    @keyframes shake   { 0%,100%{transform:translateX(0);}20%,80%{transform:translateX(-6px);}40%,60%{transform:translateX(6px);} }
+    .animate-shake     { animation: shake 0.5s; }
 
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    .fade-in           { animation: fadeIn 0.4s ease-out forwards; }
 
     @keyframes scaleUp { from { transform: scale(0.5); } to { transform: scale(1); } }
-    .scale-up { animation: scaleUp 0.5s ease-out forwards; }
+    .scale-up          { animation: scaleUp 0.5s ease-out forwards; }
 
-    /* One‑time bounce */
     @keyframes bounceOnce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
-    .bounce-once { animation: bounceOnce 0.6s ease-out; }
+    .bounce-once          { animation: bounceOnce 0.6s ease-out; }
 
-    /* Keypress pop */
-    @keyframes popFlash { 0%{background-color:#fff;} 50%{background-color:#BDE5FF;} 100%{background-color:#fff;} }
+    /* Keypress pop — light‑blue flash */
+    @keyframes popFlash {
+      0%   { background-color:#fff; }
+      50%  { background-color:#BDE5FF; }  /* lighter pastel blue */
+      100% { background-color:#fff; }
+    }
     .keypress-pop { animation: popFlash 0.25s ease-out; }
+
+    /* Fluid titles so text never overflows */
+    .resp-title { font-size: clamp(1.75rem, 6vw + 1rem, 4rem); }
   </style>
+
   <title>Simple Sums</title>
 </head>
 <body>
@@ -104,6 +127,16 @@
   <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
   <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <!-- Viewport‑height fallback for browsers without dvh -->
+  <script>
+    function setVH () {
+      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+    }
+    setVH();
+    window.addEventListener('resize',            setVH);
+    window.addEventListener('orientationchange', setVH);
+  </script>
 
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
@@ -135,8 +168,7 @@
         // pop flash on each keypress
         const el = e.target;
         el.classList.remove('keypress-pop'); // reset in case previous anim not finished
-        // forcing reflow to restart animation
-        void el.offsetWidth;
+        void el.offsetWidth;                 // force reflow
         el.classList.add('keypress-pop');
 
         setState(prev => ({ ...prev, response: e.target.value.replace(/\D/g, '') }));
@@ -235,14 +267,14 @@
       return (
         <div className="relative h-full flex flex-col items-center justify-center gap-8 px-4 py-6">
           {/* title */}
-          <div className="text-5xl sm:text-6xl fade-in">Simple Sums</div>
+          <div className="resp-title fade-in">Simple Sums</div>
 
           {/* question box */}
           <div
             ref={questionBoxRef}
             key={`${num1}-${num2}`}
             className="question-box fade-in">
-            <h1 className="question-text text-4xl sm:text-5xl md:text-6xl">
+            <h1 className="resp-title question-text">
               What is {num1} + {num2}?
             </h1>
           </div>
@@ -287,6 +319,7 @@
   </script>
 </body>
 </html>
+
 
 
 

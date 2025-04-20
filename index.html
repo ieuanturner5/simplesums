@@ -1,58 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Basic meta tags for character encoding and responsive viewport -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Friendly font -->
+  <!-- External resources -->
+  <!-- Fredoka One font for a friendly, playful look -->
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
 
-  <!-- Tailwind CSS -->
+  <!-- Tailwind CSS for utility-first styling -->
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- React and related libraries -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <!-- Confetti library for celebration effects -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
   <style>
-    /* Global friendly styling */
+    /* Global styles for the entire application */
     body {
       margin: 0;
-      /* vivid sky‑to‑grass gradient */
+      min-height: 100vh;
+      /* Gradient background from sky blue to grass green */
       background: linear-gradient(to bottom, #89CFF0 0%, #C1FBA4 100%);
+      background-attachment: fixed;
       font-family: 'Fredoka One', cursive;
       color: #333;
       overflow: hidden;
-      -webkit-tap-highlight-color: transparent; /* remove blue highlight on mobile */
+      -webkit-tap-highlight-color: transparent; /* Prevents blue highlight on mobile taps */
     }
 
-    /* Main game container — auto‑fits any screen / rotation */
+    /* Main game container with responsive sizing */
     #app {
       position: fixed;
-      inset: 2vmin;                    /* uniform margin on all sides */
+      inset: 2vmin;                    /* Uniform margin on all sides */
       display: flex;
       flex-direction: column;
-
-      /* dynamic viewport height for modern browsers */
-      height: 96dvh;
-
-      /* fallback for browsers without dvh */
-      height: calc(var(--vh, 1vh) * 96);
-
+      height: 96vh;                    /* Fallback for older browsers */
+      height: 96dvh;                   /* Dynamic viewport height for modern browsers */
       width: auto;
-      max-width: 1024px;               /* optional cap on ultrawide desktop */
-
-      background: #fff;
+      max-width: 1024px;               /* Maximum width for ultrawide screens */
+      margin: 0 auto;                  /* Center horizontally */
+      background: rgba(255, 255, 255, 0.95);
       border-radius: 24px;
-      border: 8px solid #89CFF0;       /* pastel blue */
+      border: 8px solid #89CFF0;       /* Pastel blue border */
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       overflow: hidden;
       transition: border-color 0.3s ease-out;
     }
 
-    /* Border‑flash helpers (added/removed via JS) */
-    .flash-green-border { border-color: #B5E48C !important; }
-    .flash-orange-border { border-color: #FFB347 !important; }
+    /* Border flash effects for feedback */
+    .flash-green-border { border-color: #B5E48C !important; }  /* Success feedback */
+    .flash-orange-border { border-color: #FFB347 !important; } /* Error feedback */
 
-    /* Question container — invisible stroke by default */
+    /* Question box styling */
     .question-box {
-      border: 4px solid transparent;   /* becomes green/orange during flash */
+      border: 4px solid transparent;   /* Becomes colored during feedback */
       border-radius: 20px;
       padding: 16px 24px;
       background: rgba(255,255,255,0.9);
@@ -60,7 +66,7 @@
       transition: border-color 0.3s ease-out;
     }
 
-    /* Pixel‑style button */
+    /* Styling for game buttons */
     .pixel-btn {
       background: #ffeb99;
       color: #333;
@@ -71,110 +77,234 @@
     }
     .pixel-btn:hover { background: #ffd54f; }
 
-    /* Input styling */
+    /* Input field styling */
     .pixel-input {
       background: #fff;
       color: #333;
-      border: 4px solid #89CFF0;       /* single pastel‑blue stroke */
+      border: 4px solid #89CFF0;
       border-radius: 16px;
       padding: 12px 18px;
-      width: min(80%, 320px);          /* shrinks on narrow phones */
+      width: min(80%, 320px);          /* Responsive width */
       font-size: 2rem;
       text-align: center;
       transition: border-color 0.3s ease-out;
-      outline: none;                   /* no extra browser outline */
-      box-shadow: none;                /* disable Tailwind focus ring */
+      outline: none;
+      box-shadow: none;
     }
     .pixel-input:focus { outline: none; box-shadow: none; }
 
+    /* Responsive input sizing */
     @media (min-width: 640px) {
       .pixel-input { font-size: 2.5rem; width: 60%; }
     }
 
-    /* Animations */
-    @keyframes shake   { 0%,100%{transform:translateX(0);}20%,80%{transform:translateX(-6px);}40%,60%{transform:translateX(6px);} }
-    .animate-shake     { animation: shake 0.5s; }
+    /* Animation classes for feedback effects */
+    .shake {
+      transform: translateX(0);
+      transition: transform 0.1s ease-in-out;
+    }
+    
+    .shake-left {
+      transform: translateX(-10px);
+    }
+    
+    .shake-right {
+      transform: translateX(10px);
+    }
 
-    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
-    .fade-in           { animation: fadeIn 0.4s ease-out forwards; }
+    /* Fade in animation */
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .fade-in { animation: fadeIn 0.4s ease-out forwards; }
 
+    /* Scale up animation */
     @keyframes scaleUp { from { transform: scale(0.5); } to { transform: scale(1); } }
-    .scale-up          { animation: scaleUp 0.5s ease-out forwards; }
+    .scale-up { animation: scaleUp 0.5s ease-out forwards; }
 
+    /* Bounce animation */
     @keyframes bounceOnce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
-    .bounce-once          { animation: bounceOnce 0.6s ease-out; }
+    .bounce-once { animation: bounceOnce 0.6s ease-out; }
 
-    /* Keypress pop — light‑blue flash */
+    /* Keypress feedback animation */
     @keyframes popFlash {
       0%   { background-color:#fff; }
-      50%  { background-color:#BDE5FF; }  /* lighter pastel blue */
+      50%  { background-color:#BDE5FF; }
       100% { background-color:#fff; }
     }
     .keypress-pop { animation: popFlash 0.25s ease-out; }
 
-    /* Fluid titles so text never overflows */
+    /* Responsive title sizing */
     .resp-title { font-size: clamp(1.75rem, 6vw + 1rem, 4rem); }
+
+    /* Mode toggle button styling */
+    .mode-toggle {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: #89CFF0;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .mode-toggle:hover {
+      background: #6BB5D9;
+      transform: scale(1.05);
+    }
+    .mode-toggle.practice {
+      background: #B5E48C;
+    }
+    .mode-toggle.practice:hover {
+      background: #9BCB6D;
+    }
+
+    /* Stats display container */
+    .stats-container {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stats-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .stats-item:last-child {
+      margin-bottom: 0;
+    }
+    .stats-label {
+      color: #666;
+      margin-right: 8px;
+    }
+    .stats-value {
+      font-weight: bold;
+      color: #333;
+    }
   </style>
 
   <title>Simple Sums</title>
 </head>
 <body>
-  <!-- Mount point for React -->
+  <!-- React application mount point -->
   <div id="app"></div>
 
-  <!-- React & Confetti -->
-  <script src="https://unpkg.com/react@17/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-
-  <!-- Viewport‑height fallback for browsers without dvh -->
-  <script>
-    function setVH () {
-      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
-    }
-    setVH();
-    window.addEventListener('resize',            setVH);
-    window.addEventListener('orientationchange', setVH);
-  </script>
-
   <script type="text/babel">
+    // Import React hooks
     const { useState, useEffect, useRef } = React;
 
+    // Main App component
     function App() {
-      /* util */
-      const rand = () => Math.ceil(Math.random() * 10);
+      /* Utility function to generate random numbers */
+      const rand = React.useCallback(() => Math.ceil(Math.random() * 10), []);
 
-      /* refs */
+      /* React refs for DOM manipulation */
       const questionBoxRef = useRef(null);
-      const inputRef       = useRef(null);
+      const inputRef = useRef(null);
 
-      /* state */
+      /* Initial state setup */
       const initial = {
         num1: rand(),
         num2: rand(),
         response: '',
         score: 0,
         incorrect: false,
-        flashColor: null // 'green' | 'orange'
+        flashColor: null,
+        isPracticeMode: false,
+        currentStreak: 0
       };
+
+      // Load saved game statistics from localStorage
+      const loadStats = () => {
+        try {
+          const savedStats = JSON.parse(localStorage.getItem('mathGameStats')) || {
+            highScore: 0,
+            totalAttempts: 0
+          };
+          return savedStats;
+        } catch (e) {
+          return {
+            highScore: 0,
+            totalAttempts: 0
+          };
+        }
+      };
+
+      // State management
       const [state, setState] = useState(initial);
-      const { num1, num2, response, score, incorrect, flashColor } = state;
+      const [stats, setStats] = useState(loadStats());
+      const { num1, num2, response, score, incorrect, flashColor, isPracticeMode, currentStreak } = state;
+      const { highScore, totalAttempts } = stats;
 
       const debounceTimer = useRef(null);
 
-      /* handle input typing */
+      // Save game statistics to localStorage
+      const saveStats = (newStats) => {
+        try {
+          localStorage.setItem('mathGameStats', JSON.stringify(newStats));
+        } catch (e) {
+          console.error('Failed to save stats:', e);
+        }
+      };
+
+      /* Handle user input with visual feedback */
       const handleChange = (e) => {
-        // pop flash on each keypress
         const el = e.target;
-        el.classList.remove('keypress-pop'); // reset in case previous anim not finished
-        void el.offsetWidth;                 // force reflow
+        el.classList.remove('keypress-pop');
+        void el.offsetWidth;
         el.classList.add('keypress-pop');
 
         setState(prev => ({ ...prev, response: e.target.value.replace(/\D/g, '') }));
       };
 
-      /* evaluate answer (debounced 500 ms) */
+      /* Toggle between practice and game modes */
+      const toggleMode = () => {
+        setState(prev => ({
+          ...initial,
+          isPracticeMode: !prev.isPracticeMode
+        }));
+      };
+
+      /* Shake animation effect for incorrect answers */
+      useEffect(() => {
+        if (incorrect) {
+          const boxEl = questionBoxRef.current;
+          
+          if (boxEl) {
+            boxEl.classList.add('shake');
+            
+            let count = 0;
+            const maxShakes = 6;
+            const shakeInterval = setInterval(() => {
+              if (count >= maxShakes) {
+                clearInterval(shakeInterval);
+                boxEl.classList.remove('shake', 'shake-left', 'shake-right');
+                return;
+              }
+              
+              if (count % 2 === 0) {
+                boxEl.classList.remove('shake-right');
+                boxEl.classList.add('shake-left');
+              } else {
+                boxEl.classList.remove('shake-left');
+                boxEl.classList.add('shake-right');
+              }
+              
+              count++;
+            }, 100);
+          }
+          
+          setState(prev => ({ ...prev, incorrect: false }));
+        }
+      }, [incorrect]);
+
+      /* Evaluate answer with debouncing */
       useEffect(() => {
         const sum = num1 + num2;
         clearTimeout(debounceTimer.current);
@@ -183,21 +313,48 @@
             setState(prev => {
               const ans = Number(prev.response);
               if (ans === sum) {
+                const newStreak = prev.currentStreak + 1;
+                
+                // Update stats for correct answer in game mode
+                if (!prev.isPracticeMode) {
+                  const newStats = {
+                    ...stats,
+                    totalAttempts: stats.totalAttempts + 1,
+                    highScore: Math.max(prev.score + 1, stats.highScore)
+                  };
+                  setStats(newStats);
+                  saveStats(newStats);
+                }
+
                 return {
                   num1: rand(),
                   num2: rand(),
                   response: '',
-                  score: prev.score + 1,
+                  score: prev.isPracticeMode ? prev.score : prev.score + 1,
                   incorrect: false,
-                  flashColor: 'green'
+                  flashColor: 'green',
+                  isPracticeMode: prev.isPracticeMode,
+                  currentStreak: newStreak
                 };
               }
+              
+              // Update stats for incorrect answer in game mode
+              if (!prev.isPracticeMode) {
+                const newStats = {
+                  ...stats,
+                  totalAttempts: stats.totalAttempts + 1
+                };
+                setStats(newStats);
+                saveStats(newStats);
+              }
+
               return {
                 ...prev,
                 response: '',
-                score: prev.score - 1,
+                score: prev.isPracticeMode ? prev.score : prev.score - 1,
                 incorrect: true,
-                flashColor: 'orange'
+                flashColor: 'orange',
+                currentStreak: 0
               };
             });
           }, 500);
@@ -205,29 +362,22 @@
         return () => clearTimeout(debounceTimer.current);
       }, [response, num1, num2]);
 
-      /* shake on wrong */
-      useEffect(() => {
-        if (incorrect && inputRef.current) {
-          inputRef.current.classList.add('animate-shake');
-          setTimeout(() => inputRef.current.classList.remove('animate-shake'), 500);
-          setState(prev => ({ ...prev, incorrect: false }));
-        }
-      }, [incorrect]);
-
-      /* border flash & bounce on correct / wrong */
+      /* Visual feedback effects for correct/incorrect answers */
       useEffect(() => {
         if (!flashColor) return;
         const appEl = document.getElementById('app');
         const inputEl = inputRef.current;
-        const boxEl  = questionBoxRef.current;
+        const boxEl = questionBoxRef.current;
         const className = flashColor === 'green' ? 'flash-green-border' : 'flash-orange-border';
 
         [appEl, inputEl, boxEl].forEach(el => el && el.classList.add(className));
         if (flashColor === 'green') {
-          [inputEl, boxEl].forEach(el => el && el.classList.add('bounce-once'));
-          setTimeout(() => {
-            [inputEl, boxEl].forEach(el => el && el.classList.remove('bounce-once'));
-          }, 700);
+          [inputEl, boxEl].forEach(el => {
+            if (el) {
+              el.classList.add('bounce-once');
+              setTimeout(() => el.classList.remove('bounce-once'), 700);
+            }
+          });
         }
 
         const id = setTimeout(() => {
@@ -237,71 +387,103 @@
         return () => clearTimeout(id);
       }, [flashColor]);
 
-      /* confetti on big win */
+      /* Celebration effect for reaching score of 10 */
       useEffect(() => {
         if (score >= 10) confetti({ particleCount: 120, spread: 70 });
       }, [score]);
 
-      const reset = () => setState(initial);
+      /* Reset game state */
+      const reset = () => {
+        setState(initial);
+      };
 
-      /* loss / win screens */
-      if (score <= -10) return (
+      /* Progress bar calculations */
+      const mid = 10;
+      const balloonCount = Math.min(Math.max(-score,0), mid);
+      const starCount = Math.min(Math.max(score,0), mid);
+
+      /* Game over screens */
+      if (!isPracticeMode && score <= -10) return (
         <div className="absolute inset-0 bg-white flex flex-col items-center justify-center">
           <div className="scale-up fade-in text-3xl mb-4">Oh no! Try again!</div>
+          <div className="text-xl mb-4">Your high score: {highScore}</div>
           <button onClick={reset} className="pixel-btn">RESET</button>
         </div>
       );
 
-      if (score >= 10) return (
+      if (!isPracticeMode && score >= 10) return (
         <div className="absolute inset-0 bg-white flex flex-col items-center justify-center">
           <div className="scale-up fade-in text-3xl mb-4">Yay! You did it!</div>
+          <div className="text-xl mb-4">Your high score: {highScore}</div>
           <button onClick={reset} className="pixel-btn">PLAY AGAIN</button>
         </div>
       );
 
-      /* progress bar */
-      const mid = 10;
-      const balloonCount = Math.min(Math.max(-score,0), mid);
-      const starCount    = Math.min(Math.max(score,0),  mid);
-
+      /* Main game interface */
       return (
         <div className="relative h-full flex flex-col items-center justify-center gap-8 px-4 py-6">
-          {/* title */}
+          {/* Mode toggle button */}
+          <button 
+            onClick={toggleMode}
+            className={`mode-toggle ${isPracticeMode ? 'practice' : ''}`}
+          >
+            {isPracticeMode ? 'Practice Mode' : 'Game Mode'}
+          </button>
+
+          {/* Stats display (only in game mode) */}
+          {!isPracticeMode && (
+            <div className="stats-container">
+              <div className="stats-item">
+                <span className="stats-label">High Score:</span>
+                <span className="stats-value">{highScore}</span>
+              </div>
+              <div className="stats-item">
+                <span className="stats-label">Current Streak:</span>
+                <span className="stats-value">{currentStreak}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Game title */}
           <div className="resp-title fade-in">Simple Sums</div>
 
-          {/* question box */}
+          {/* Question display */}
           <div
             ref={questionBoxRef}
             key={`${num1}-${num2}`}
-            className="question-box fade-in">
+            className="question-box fade-in"
+            role="region"
+            aria-label="Math question">
             <h1 className="resp-title question-text">
               What is {num1} + {num2}?
             </h1>
           </div>
 
-          {/* progress bar icons */}
-          <div className="flex mb-2">
-            {Array.from({ length: 20 }).map((_, i) => {
-              const isBalloon = i < mid;
-              const icon = isBalloon ? '🎈' : '⭐';
-              const base = 0.1;
-              let opacity = base;
-              if (isBalloon) {
-                const j = (mid - 1) - i;
-                if (j < balloonCount) opacity = base + (j + 1) * 0.1;
-              } else {
-                const j = i - mid;
-                if (j < starCount) opacity = base + (j + 1) * 0.1;
-              }
-              return (
-                <span key={i} className="mx-1 text-2xl sm:text-3xl" style={{ opacity }}>
-                  {icon}
-                </span>
-              );
-            })}
-          </div>
+          {/* Progress bar (only in game mode) */}
+          {!isPracticeMode && (
+            <div className="flex mb-2">
+              {Array.from({ length: 20 }).map((_, i) => {
+                const isBalloon = i < mid;
+                const icon = isBalloon ? '🎈' : '⭐';
+                const base = 0.1;
+                let opacity = base;
+                if (isBalloon) {
+                  const j = (mid - 1) - i;
+                  if (j < balloonCount) opacity = base + (j + 1) * 0.1;
+                } else {
+                  const j = i - mid;
+                  if (j < starCount) opacity = base + (j + 1) * 0.1;
+                }
+                return (
+                  <span key={i} className="mx-1 text-2xl sm:text-3xl" style={{ opacity }}>
+                    {icon}
+                  </span>
+                );
+              })}
+            </div>
+          )}
 
-          {/* answer input */}
+          {/* Answer input field */}
           <input
             ref={inputRef}
             className="pixel-input"
@@ -310,15 +492,32 @@
             maxLength={(num1 + num2).toString().length}
             value={response}
             onChange={handleChange}
+            aria-label="Enter your answer"
+            role="textbox"
           />
         </div>
       );
     }
 
-    ReactDOM.render(<App />, document.getElementById('app'));
+    // Initialize React application
+    const root = ReactDOM.createRoot(document.getElementById('app'));
+    root.render(<App />);
+  </script>
+
+  <!-- Viewport height fallback for older browsers -->
+  <script>
+    function setVH () {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+      document.documentElement.style.setProperty('--dvh', `${vh}px`);
+    }
+    setVH();
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
   </script>
 </body>
 </html>
+
 
 
 
